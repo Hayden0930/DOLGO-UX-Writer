@@ -398,16 +398,25 @@
   </div>
 
   <script>
-    let analysisData = null;
-    let selectedItems = [];
+         let analysisData = null;
+     let selectedItems = [];
+     let previousState = 'initial-state';
 
-    // UI 상태 관리
-    function showState(state) {
-      ['initial-state', 'analysis-state', 'loading-state', 'error-state'].forEach(s => {
-        document.getElementById(s).style.display = 'none';
-      });
-      document.getElementById(state).style.display = 'block';
-    }
+         // UI 상태 관리
+     function showState(state) {
+       // 이전 상태 저장 (취소 버튼용)
+       if (state !== 'initial-state') {
+         previousState = state;
+       }
+       
+       ['initial-state', 'analysis-state', 'loading-state', 'error-state'].forEach(s => {
+         document.getElementById(s).style.display = 'none';
+       });
+       document.getElementById(state).style.display = 'block';
+       
+       // 취소 버튼 텍스트 업데이트
+       updateCancelButtonText(state);
+     }
 
     // 분석 결과 표시
     function displayAnalysis(data) {
@@ -531,8 +540,36 @@
     };
 
          document.getElementById('cancel-btn').onclick = () => {
-       parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+       // 현재 상태에 따라 뒤로 가기 또는 플러그인 종료
+       const currentState = getCurrentState();
+       
+       if (currentState === 'initial-state') {
+         // 초기 화면에서는 플러그인 종료
+         parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+       } else {
+         // 다른 화면에서는 이전 상태로 돌아가기
+         showState('initial-state');
+       }
      };
+
+     // 취소 버튼 텍스트 업데이트
+     function updateCancelButtonText(state) {
+       const cancelBtn = document.getElementById('cancel-btn');
+       if (state === 'initial-state') {
+         cancelBtn.textContent = '취소';
+       } else {
+         cancelBtn.textContent = '뒤로 가기';
+       }
+     }
+
+     // 현재 상태 확인 함수
+     function getCurrentState() {
+       if (document.getElementById('initial-state').style.display !== 'none') return 'initial-state';
+       if (document.getElementById('analysis-state').style.display !== 'none') return 'analysis-state';
+       if (document.getElementById('loading-state').style.display !== 'none') return 'loading-state';
+       if (document.getElementById('error-state').style.display !== 'none') return 'error-state';
+       return 'initial-state';
+     }
 
      document.getElementById('reselect-btn').onclick = () => {
        showState('initial-state');
