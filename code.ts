@@ -168,26 +168,64 @@ async function loadFontsForNode(textNode: TextNode): Promise<void> {
   }
 }
 
+// Frame 내의 모든 텍스트 노드 찾기
+function findAllTextNodesInFrame(frame: FrameNode): TextNode[] {
+  const textNodes: TextNode[] = [];
+  
+  function traverse(node: SceneNode) {
+    if (node.type === 'TEXT') {
+      textNodes.push(node as TextNode);
+    } else if ('children' in node) {
+      for (const child of node.children) {
+        traverse(child);
+      }
+    }
+  }
+  
+  traverse(frame);
+  return textNodes;
+}
+
+// 선택된 노드들에서 텍스트 노드 추출
+function extractTextNodesFromSelection(selection: readonly SceneNode[]): TextNode[] {
+  const textNodes: TextNode[] = [];
+  
+  for (const node of selection) {
+    if (node.type === 'TEXT') {
+      textNodes.push(node as TextNode);
+    } else if (node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'INSTANCE' || node.type === 'COMPONENT') {
+      // Frame, Group, Instance, Component 내의 모든 텍스트 노드 찾기
+      const frameTextNodes = findAllTextNodesInFrame(node as FrameNode);
+      textNodes.push(...frameTextNodes);
+    }
+  }
+  
+  return textNodes;
+}
+
 // 선택된 텍스트 노드 분석
 async function analyzeSelectedTextNodes(): Promise<any> {
   const selection = figma.currentPage.selection;
   
   if (selection.length === 0) {
-    return { error: '텍스트 노드를 선택해주세요!' };
+    return { error: '텍스트 노드나 Frame을 선택해주세요!' };
+  }
+  
+  // 선택된 노드들에서 텍스트 노드 추출
+  const textNodes = extractTextNodesFromSelection(selection);
+  
+  if (textNodes.length === 0) {
+    return { error: '분석할 텍스트가 없습니다. 텍스트 노드나 텍스트가 포함된 Frame을 선택해주세요.' };
   }
   
   const texts: string[] = [];
-  const textNodes: TextNode[] = [];
+  const validTextNodes: TextNode[] = [];
   
-  for (const node of selection) {
-    if (node.type === 'TEXT') {
-      const textNode = node as TextNode;
-      
-      const text = textNode.characters;
-      if (text.trim()) {
-        texts.push(text);
-        textNodes.push(textNode);
-      }
+  for (const textNode of textNodes) {
+    const text = textNode.characters;
+    if (text.trim()) {
+      texts.push(text);
+      validTextNodes.push(textNode);
     }
   }
   
@@ -203,13 +241,18 @@ async function analyzeSelectedTextNodes(): Promise<any> {
     original: text,
     converted: convertToFriendlyTone(text),
     hasChanges: text !== convertToFriendlyTone(text),
-    nodeId: textNodes[index].id
+    nodeId: validTextNodes[index].id,
+    nodeName: validTextNodes[index].name || '텍스트'
   }));
   
   return {
     profile,
     previews,
-    textNodes: textNodes.map(node => node.id)
+    textNodes: validTextNodes.map(node => node.id),
+    totalNodes: textNodes.length,
+    selectedFrames: selection.filter(node => 
+      node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'INSTANCE' || node.type === 'COMPONENT'
+    ).length
   };
 }
 
@@ -218,31 +261,35 @@ async function processSelectedTextNodes() {
   const selection = figma.currentPage.selection;
   
   if (selection.length === 0) {
-    figma.notify('텍스트 노드를 선택해주세요!');
+    figma.notify('텍스트 노드나 Frame을 선택해주세요!');
+    return;
+  }
+  
+  // 선택된 노드들에서 텍스트 노드 추출
+  const textNodes = extractTextNodesFromSelection(selection);
+  
+  if (textNodes.length === 0) {
+    figma.notify('처리할 텍스트가 없습니다.');
     return;
   }
   
   let processedCount = 0;
   
-  for (const node of selection) {
-    if (node.type === 'TEXT') {
-      const textNode = node as TextNode;
+  for (const textNode of textNodes) {
+    try {
+      // 폰트 로딩
+      await loadFontsForNode(textNode);
       
-      try {
-        // 폰트 로딩
-        await loadFontsForNode(textNode);
-        
-        const originalText = textNode.characters;
-        const convertedText = convertToFriendlyTone(originalText);
-        
-        if (originalText !== convertedText) {
-          textNode.characters = convertedText;
-          processedCount++;
-        }
-      } catch (error) {
-        console.error('텍스트 처리 실패:', error);
-        figma.notify('일부 텍스트 처리에 실패했습니다.');
+      const originalText = textNode.characters;
+      const convertedText = convertToFriendlyTone(originalText);
+      
+      if (originalText !== convertedText) {
+        textNode.characters = convertedText;
+        processedCount++;
       }
+    } catch (error) {
+      console.error('텍스트 처리 실패:', error);
+      figma.notify('일부 텍스트 처리에 실패했습니다.');
     }
   }
   

@@ -69,27 +69,27 @@
       margin: 0;
     }
     
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
+         .stats-grid {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
+       gap: 8px;
+       margin-bottom: 16px;
+     }
     
-    .stat-item {
-      text-align: center;
-      padding: 12px;
-      background: #f8fafc;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
-    }
+         .stat-item {
+       text-align: center;
+       padding: 8px;
+       background: #f8fafc;
+       border-radius: 6px;
+       border: 1px solid #e2e8f0;
+     }
     
-    .stat-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #0f172a;
-      margin: 0;
-    }
+         .stat-value {
+       font-size: 16px;
+       font-weight: 700;
+       color: #0f172a;
+       margin: 0;
+     }
     
     .stat-label {
       font-size: 12px;
@@ -309,6 +309,14 @@
             <div class="stat-value" id="avg-length">0</div>
             <div class="stat-label">평균 길이</div>
           </div>
+          <div class="stat-item">
+            <div class="stat-value" id="total-nodes">0</div>
+            <div class="stat-label">텍스트 노드</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="selected-frames">0</div>
+            <div class="stat-label">선택된 Frame</div>
+          </div>
         </div>
 
         <div id="sentence-styles" style="display: none;">
@@ -381,6 +389,7 @@
 
     <div id="error-state" style="display: none;">
       <div class="error" id="error-message"></div>
+      <button id="reselect-btn" class="button button-primary" style="margin-top: 12px;">다시 선택하기</button>
     </div>
 
     <div style="margin-top: 16px;">
@@ -410,9 +419,11 @@
 
       analysisData = data;
       
-      // 기본 통계
-      document.getElementById('total-texts').textContent = data.profile.totalTexts;
-      document.getElementById('avg-length').textContent = data.profile.averageLength;
+             // 기본 통계
+       document.getElementById('total-texts').textContent = data.profile.totalTexts;
+       document.getElementById('avg-length').textContent = data.profile.averageLength;
+       document.getElementById('total-nodes').textContent = data.totalNodes || 0;
+       document.getElementById('selected-frames').textContent = data.selectedFrames || 0;
 
       // 문장 스타일 차트
       const totalStyles = Object.values(data.profile.sentenceStyles).reduce((a, b) => a + b, 0);
@@ -475,16 +486,18 @@
         const content = document.createElement('div');
         content.className = 'preview-content';
 
-        if (preview.hasChanges) {
-          content.innerHTML = `
-            <div class="preview-original">${preview.original}</div>
-            <div class="preview-converted">${preview.converted}</div>
-          `;
-        } else {
-          content.innerHTML = `
-            <div class="preview-no-change">${preview.original} (변경 없음)</div>
-          `;
-        }
+                 if (preview.hasChanges) {
+           content.innerHTML = `
+             <div class="preview-original">${preview.original}</div>
+             <div class="preview-converted">${preview.converted}</div>
+             <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">${preview.nodeName}</div>
+           `;
+         } else {
+           content.innerHTML = `
+             <div class="preview-no-change">${preview.original} (변경 없음)</div>
+             <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">${preview.nodeName}</div>
+           `;
+         }
 
         item.appendChild(checkbox);
         item.appendChild(content);
@@ -517,9 +530,13 @@
       parent.postMessage({ pluginMessage: { type: 'convert-text' } }, '*');
     };
 
-    document.getElementById('cancel-btn').onclick = () => {
-      parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
-    };
+         document.getElementById('cancel-btn').onclick = () => {
+       parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+     };
+
+     document.getElementById('reselect-btn').onclick = () => {
+       showState('initial-state');
+     };
 
     // 메시지 수신
     window.onmessage = (event) => {
