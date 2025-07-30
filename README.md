@@ -53,6 +53,41 @@ npm run build
 2. 메뉴에서 `Plugins` → `Development` → `Import plugin from manifest...` 선택
 3. 이 프로젝트의 `manifest.json` 파일을 선택합니다
 
+### 🚀 **팀원 설치 가이드**
+
+#### **방법 1: GitHub에서 직접 설치 (추천)**
+```bash
+# 1. 저장소 클론
+git clone https://github.com/Hayden0930/DOLGO-UX-Writer.git
+
+# 2. 프로젝트 폴더로 이동
+cd DOLGO-UX-Writer
+
+# 3. 의존성 설치
+npm install
+
+# 4. 플러그인 빌드
+npm run build
+```
+
+#### **방법 2: ZIP 파일로 설치**
+1. **DOLGO-UX-Writer.zip** 파일을 다운로드
+2. 압축 해제 후 프로젝트 폴더로 이동
+3. 터미널에서 위의 3-4단계 실행
+
+#### **Figma에서 플러그인 로드**
+1. **Figma 데스크톱 앱**을 실행합니다.
+2. **Plugins** → **Development** → **Import plugin from manifest...**를 클릭합니다.
+3. 프로젝트의 `manifest.json` 파일을 선택합니다.
+4. 플러그인이 설치되면 **Plugins** 메뉴에서 **DOLGO UX Writer**를 실행합니다.
+
+### 🔄 **업데이트 방법**
+```bash
+# 최신 버전으로 업데이트
+git pull origin main
+npm run build
+```
+
 ### 5. 플러그인 사용
 
 1. 피그마에서 텍스트 노드를 선택합니다
@@ -90,6 +125,7 @@ npm run lint:fix
 - `메시지` → `댓글`
 - `설립` → `개설`
 - `재단` → `기부재단`
+- `후기` → `소식`
 
 ### 명령형 → 친근한 제안형
 - `해보세요` → `해보기`
