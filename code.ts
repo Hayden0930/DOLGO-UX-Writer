@@ -158,8 +158,18 @@ function convertToFriendlyTone(text: string): string {
   return convertedText;
 }
 
+// 폰트 로딩 함수
+async function loadFontsForNode(textNode: TextNode): Promise<void> {
+  try {
+    const fontName = textNode.fontName as FontName;
+    await figma.loadFontAsync(fontName);
+  } catch (error) {
+    console.error('폰트 로딩 실패:', error);
+  }
+}
+
 // 선택된 텍스트 노드 분석
-function analyzeSelectedTextNodes(): any {
+async function analyzeSelectedTextNodes(): Promise<any> {
   const selection = figma.currentPage.selection;
   
   if (selection.length === 0) {
@@ -172,10 +182,6 @@ function analyzeSelectedTextNodes(): any {
   for (const node of selection) {
     if (node.type === 'TEXT') {
       const textNode = node as TextNode;
-      
-      if (textNode.hasMissingFont) {
-        continue;
-      }
       
       const text = textNode.characters;
       if (text.trim()) {
@@ -208,7 +214,7 @@ function analyzeSelectedTextNodes(): any {
 }
 
 // 선택된 텍스트 노드 처리
-function processSelectedTextNodes() {
+async function processSelectedTextNodes() {
   const selection = figma.currentPage.selection;
   
   if (selection.length === 0) {
@@ -222,17 +228,20 @@ function processSelectedTextNodes() {
     if (node.type === 'TEXT') {
       const textNode = node as TextNode;
       
-      if (textNode.hasMissingFont) {
-        figma.notify('폰트가 누락된 텍스트가 있습니다. 폰트를 로드해주세요.');
-        continue;
-      }
-      
-      const originalText = textNode.characters;
-      const convertedText = convertToFriendlyTone(originalText);
-      
-      if (originalText !== convertedText) {
-        textNode.characters = convertedText;
-        processedCount++;
+      try {
+        // 폰트 로딩
+        await loadFontsForNode(textNode);
+        
+        const originalText = textNode.characters;
+        const convertedText = convertToFriendlyTone(originalText);
+        
+        if (originalText !== convertedText) {
+          textNode.characters = convertedText;
+          processedCount++;
+        }
+      } catch (error) {
+        console.error('텍스트 처리 실패:', error);
+        figma.notify('일부 텍스트 처리에 실패했습니다.');
       }
     }
   }
@@ -245,24 +254,26 @@ function processSelectedTextNodes() {
 }
 
 // UI에서 메시지 수신
-figma.ui.onmessage = (msg: { type: string; data?: any }) => {
+figma.ui.onmessage = async (msg: { type: string; data?: any }) => {
   if (msg.type === 'analyze-text') {
-    const result = analyzeSelectedTextNodes();
+    const result = await analyzeSelectedTextNodes();
     figma.ui.postMessage({ type: 'analysis-result', data: result });
   } else if (msg.type === 'convert-text') {
-    processSelectedTextNodes();
+    await processSelectedTextNodes();
   } else if (msg.type === 'apply-selected') {
     // 선택된 항목만 적용
     if (msg.data && msg.data.selectedItems) {
       let processedCount = 0;
       
       // 비동기로 노드들을 처리
-      Promise.all(
+      await Promise.all(
         msg.data.selectedItems.map(async (item: any) => {
           try {
             const node = await figma.getNodeByIdAsync(item.nodeId);
             if (node && node.type === 'TEXT') {
               const textNode = node as TextNode;
+              // 폰트 로딩
+              await loadFontsForNode(textNode);
               textNode.characters = item.converted;
               processedCount++;
             }
@@ -270,9 +281,9 @@ figma.ui.onmessage = (msg: { type: string; data?: any }) => {
             console.error('Node not found:', item.nodeId);
           }
         })
-      ).then(() => {
-        figma.notify(`${processedCount}개의 텍스트가 변경되었습니다!`);
-      });
+      );
+      
+      figma.notify(`${processedCount}개의 텍스트가 변경되었습니다!`);
     }
   } else if (msg.type === 'cancel') {
     figma.closePlugin();
